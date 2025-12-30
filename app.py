@@ -1,25 +1,26 @@
 import streamlit as st
+import streamlit.components.v1 as components
 from logic import generate_tarot_spread_pdf
 
-# ----------------------------
-# Page config
-# ----------------------------
+# -------------------------------------------------
+# Page configuration
+# -------------------------------------------------
 st.set_page_config(
     page_title="Tarot Spread Builder",
     layout="centered"
 )
 
-# ----------------------------
-# Custom CSS (the glow-up)
-# ----------------------------
+# -------------------------------------------------
+# Global CSS (SAFE, SINGLE INJECTION)
+# -------------------------------------------------
 st.markdown("""
 <style>
-body {
+html, body {
     background-color: #0f0f14;
 }
 
 h1, h2, h3, label, p {
-    color: #f3f3f3;
+    color: #f3f3f3 !important;
 }
 
 .tarot-grid {
@@ -32,7 +33,7 @@ h1, h2, h3, label, p {
 
 .tarot-card {
     width: 120px;
-    height: 200px; /* Tarot ratio ~1:1.7 */
+    height: 200px;
     background: linear-gradient(180deg, #1a1a23, #0e0e14);
     border-radius: 14px;
     border: 1px solid rgba(255,255,255,0.08);
@@ -50,22 +51,22 @@ h1, h2, h3, label, p {
 }
 
 .tarot-card span {
-    opacity: 0.85;
+    opacity: 0.9;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------------------
+# -------------------------------------------------
 # Header
-# ----------------------------
+# -------------------------------------------------
 st.title("🔮 Tarot Spread Builder")
 st.caption("Design a spread. Feel it. Download it.")
 
 st.divider()
 
-# ----------------------------
+# -------------------------------------------------
 # Inputs
-# ----------------------------
+# -------------------------------------------------
 spread_name = st.text_input(
     "Spread name",
     placeholder="e.g. The Velvet Threshold"
@@ -94,29 +95,37 @@ for i in range(int(num_cards)):
     )
     positions.append(pos)
 
-# ----------------------------
-# Visual Preview
-# ----------------------------
+# -------------------------------------------------
+# Visual Spread Preview (HARDENED)
+# -------------------------------------------------
 if any(p.strip() for p in positions):
     st.subheader("Spread Preview")
 
-    cards_html = "<div class='tarot-grid'>"
+    cards_html = """
+    <div class="tarot-grid">
+    """
+
     for pos in positions:
-        label = pos if pos.strip() else "—"
+        label = pos.strip() if pos.strip() else "—"
         cards_html += f"""
-        <div class='tarot-card'>
+        <div class="tarot-card">
             <span>{label}</span>
         </div>
         """
+
     cards_html += "</div>"
 
-    st.markdown(cards_html, unsafe_allow_html=True)
+    components.html(
+        cards_html,
+        height=260,
+        scrolling=False
+    )
 
 st.divider()
 
-# ----------------------------
+# -------------------------------------------------
 # PDF Generation
-# ----------------------------
+# -------------------------------------------------
 if st.button("Create PDF"):
     if not spread_name.strip():
         st.warning("Please enter a spread name.")
