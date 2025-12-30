@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
-from logic import generate_tarot_spread_pdf
 from spreads import SPREADS
+from logic import generate_tarot_spread_pdf
 
 # -------------------------------------------------
 # Page config
@@ -16,6 +16,56 @@ st.caption("Design a spread. Shape the question. Download the ritual.")
 st.divider()
 
 # -------------------------------------------------
+# Layout authority (single source of truth)
+# -------------------------------------------------
+def get_layout(layout):
+    layouts = {
+        "Line": {
+            "cols": 5,
+            "rows": [
+                ["c0", "c1", "c2", "c3", "c4"]
+            ]
+        },
+
+        "Triangle": {
+            "cols": 3,
+            "rows": [
+                [".",  "c0", "."],
+                ["c1", ".",  "c2"]
+            ]
+        },
+
+        "Cross": {
+            "cols": 3,
+            "rows": [
+                [".",  "c0", "."],
+                ["c1", "c2", "c3"],
+                [".",  "c4", "."]
+            ]
+        },
+
+        "Horseshoe": {
+            "cols": 5,
+            "rows": [
+                ["c0", ".", ".", ".", "c1"],
+                [".",  "c2", ".", "c3", "."],
+                [".",  ".",  "c4", ".",  "."]
+            ]
+        },
+
+        "Circle": {
+            "cols": 3,
+            "rows": [
+                ["c0", ".",  "c1"],
+                [".",  "c2", "."],
+                ["c3", ".",  "c4"]
+            ]
+        }
+    }
+
+    return layouts.get(layout)
+
+# -------------------------------------------------
 # Spread selection
 # -------------------------------------------------
 spread_choice = st.selectbox(
@@ -25,9 +75,6 @@ spread_choice = st.selectbox(
 
 spread_def = SPREADS[spread_choice]
 
-# -------------------------------------------------
-# Inputs
-# -------------------------------------------------
 spread_name = st.text_input(
     "Spread name",
     value=spread_choice if spread_choice != "Custom Spread" else ""
@@ -39,13 +86,18 @@ theme = st.text_area(
 )
 
 # -------------------------------------------------
-# Position logic
+# Position + layout logic
 # -------------------------------------------------
 if spread_choice == "Custom Spread":
+    layout_type = st.selectbox(
+        "Layout",
+        ["Line", "Triangle", "Cross", "Horseshoe", "Circle"]
+    )
+
     num_cards = st.number_input(
         "Number of cards",
         min_value=3,
-        max_value=10,
+        max_value=5,
         value=3,
         step=1
     )
@@ -57,44 +109,21 @@ if spread_choice == "Custom Spread":
             placeholder=f"Meaning of card {i + 1}"
         )
         positions.append(pos)
-
-    layout_type = st.selectbox(
-        "Layout",
-        ["Line", "Triangle", "Cross", "Horseshoe", "Circle"]
-    )
-
 else:
-    positions = spread_def["positions"]
     layout_type = spread_def["layout"]
+    positions = spread_def["positions"]
+
+layout_def = get_layout(layout_type)
 
 # -------------------------------------------------
-# Layout engine
+# Visual Preview (compact, stable)
 # -------------------------------------------------
-def get_layout_css(layout, count):
-    if layout == "Line":
-        return ("repeat(" + str(count) + ", 1fr)", " ".join([f"c{i}" for i in range(count)]))
-
-    if layout == "Triangle":
-        return ("repeat(3, 1fr)", ". c0 . c1 . c2")
-
-    if layout == "Cross":
-        return ("repeat(3, 1fr)", ". c0 . c1 c2 c3 . c4 .")
-
-    if layout == "Horseshoe":
-        return ("repeat(5, 1fr)", "c0 . . . c1 . c2 . c3 . . c4 . .")
-
-    if layout == "Circle":
-        return ("repeat(3, 1fr)", "c0 . c1 . c2 . c3 . c4")
-
-    return ("repeat(3, 1fr)", "")
-
-# -------------------------------------------------
-# Visual Preview
-# -------------------------------------------------
-if positions and any(p.strip() for p in positions):
+if layout_def and positions:
     st.subheader("Spread Preview")
 
-    cols, areas = get_layout_css(layout_type, len(positions))
+    grid_rows = ""
+    for row in layout_def["rows"]:
+        grid_rows += '"' + " ".join(row) + '"\n'
 
     cards_html = f"""
     <html>
@@ -102,38 +131,37 @@ if positions and any(p.strip() for p in positions):
         <style>
             body {{
                 margin: 0;
+                padding: 0;
                 background: transparent;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                display: flex;
+                justify-content: center;
             }}
 
             .grid {{
                 display: grid;
-                grid-template-columns: {cols};
-                grid-template-areas: "{areas}";
-                gap: 1.6rem;
-                justify-items: center;
-                padding: 2rem;
+                grid-template-columns: repeat({layout_def['cols']}, 1fr);
+                grid-template-areas:
+                {grid_rows};
+                gap: 0.8rem;
+                padding: 1rem;
+                max-width: 420px;
             }}
 
             .tarot-card {{
-                width: 120px;
-                height: 204px;
-                background:
-                    radial-gradient(120% 120% at 30% 20%, rgba(255,255,255,0.06), transparent 40%),
-                    linear-gradient(180deg, #14141b, #0b0b10);
-                border-radius: 16px;
-                border: 1px solid rgba(255,255,255,0.08);
-                box-shadow:
-                    0 18px 40px rgba(0,0,0,0.65),
-                    inset 0 0 0 1px rgba(255,255,255,0.03);
+                width: 84px;
+                height: 144px;
+                background: linear-gradient(180deg, #14141b, #0b0b10);
+                border-radius: 14px;
+                border: 1px solid rgba(255,255,255,0.12);
+                box-shadow: 0 12px 28px rgba(0,0,0,0.55);
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 text-align: center;
-                padding: 0.9rem;
-                color: #e9e9ea;
-                font-size: 0.85rem;
-                line-height: 1.25rem;
+                padding: 0.6rem;
+                color: #eaeaea;
+                font-size: 0.75rem;
+                line-height: 1.1rem;
             }}
         </style>
     </head>
@@ -142,11 +170,10 @@ if positions and any(p.strip() for p in positions):
     """
 
     for i, pos in enumerate(positions):
-        label = pos if pos.strip() else "—"
         cards_html += f"""
-            <div class="tarot-card" style="grid-area: c{i};">
-                {label}
-            </div>
+        <div class="tarot-card" style="grid-area: c{i};">
+            {pos if pos.strip() else "—"}
+        </div>
         """
 
     cards_html += """
@@ -155,7 +182,7 @@ if positions and any(p.strip() for p in positions):
     </html>
     """
 
-    components.html(cards_html, height=440, scrolling=False)
+    components.html(cards_html, height=260, scrolling=False)
 
 st.divider()
 
@@ -171,7 +198,8 @@ if st.button("Create PDF"):
         pdf = generate_tarot_spread_pdf(
             spread_name=spread_name,
             theme=theme,
-            positions=positions
+            positions=positions,
+            layout_def=layout_def
         )
 
         st.success("Your tarot spread PDF is ready.")
