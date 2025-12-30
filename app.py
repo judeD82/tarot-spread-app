@@ -3,7 +3,7 @@ import streamlit.components.v1 as components
 from logic import generate_tarot_spread_pdf
 
 # -------------------------------------------------
-# Page configuration
+# Page config
 # -------------------------------------------------
 st.set_page_config(
     page_title="Tarot Spread Builder",
@@ -11,56 +11,10 @@ st.set_page_config(
 )
 
 # -------------------------------------------------
-# Global CSS (SAFE, SINGLE INJECTION)
+# Global UI framing (Streamlit side)
 # -------------------------------------------------
-st.markdown("""
-<style>
-html, body {
-    background-color: #0f0f14;
-}
-
-h1, h2, h3, label, p {
-    color: #f3f3f3 !important;
-}
-
-.tarot-grid {
-    display: flex;
-    gap: 1.5rem;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin-top: 1.5rem;
-}
-
-.tarot-card {
-    width: 120px;
-    height: 200px;
-    background: linear-gradient(180deg, #1a1a23, #0e0e14);
-    border-radius: 14px;
-    border: 1px solid rgba(255,255,255,0.08);
-    box-shadow:
-        0 10px 25px rgba(0,0,0,0.6),
-        inset 0 0 0 1px rgba(255,255,255,0.03);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 0.8rem;
-    font-size: 0.9rem;
-    line-height: 1.2rem;
-    color: #e6e6e6;
-}
-
-.tarot-card span {
-    opacity: 0.9;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# -------------------------------------------------
-# Header
-# -------------------------------------------------
-st.title("🔮 Tarot Spread Builder")
-st.caption("Design a spread. Feel it. Download it.")
+st.title("Tarot Spread Builder")
+st.caption("Design a spread. Contemplate it. Download the ritual.")
 
 st.divider()
 
@@ -96,24 +50,74 @@ for i in range(int(num_cards)):
     positions.append(pos)
 
 # -------------------------------------------------
-# Visual Spread Preview (HARDENED)
+# Visual Preview (CSS INCLUDED INSIDE IFRAME)
 # -------------------------------------------------
 if any(p.strip() for p in positions):
     st.subheader("Spread Preview")
 
     cards_html = """
-    <div class="tarot-grid">
+    <html>
+    <head>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                background: transparent;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            }
+
+            .tarot-grid {
+                display: flex;
+                gap: 1.6rem;
+                flex-wrap: wrap;
+                justify-content: center;
+                padding: 1.5rem 0;
+            }
+
+            .tarot-card {
+                width: 120px;
+                height: 204px; /* Tarot ratio */
+                background:
+                    radial-gradient(120% 120% at 30% 20%, rgba(255,255,255,0.06), transparent 40%),
+                    linear-gradient(180deg, #14141b, #0b0b10);
+                border-radius: 16px;
+                border: 1px solid rgba(255,255,255,0.08);
+                box-shadow:
+                    0 18px 40px rgba(0,0,0,0.65),
+                    inset 0 0 0 1px rgba(255,255,255,0.03);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                padding: 0.9rem;
+                color: #e9e9ea;
+                font-size: 0.85rem;
+                line-height: 1.25rem;
+                letter-spacing: 0.02em;
+            }
+
+            .tarot-card span {
+                opacity: 0.88;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="tarot-grid">
     """
 
     for pos in positions:
         label = pos.strip() if pos.strip() else "—"
         cards_html += f"""
-        <div class="tarot-card">
-            <span>{label}</span>
-        </div>
+            <div class="tarot-card">
+                <span>{label}</span>
+            </div>
         """
 
-    cards_html += "</div>"
+    cards_html += """
+        </div>
+    </body>
+    </html>
+    """
 
     components.html(
         cards_html,
@@ -141,7 +145,7 @@ if st.button("Create PDF"):
         st.success("Your tarot spread PDF is ready.")
 
         st.download_button(
-            label="📥 Download PDF",
+            label="Download PDF",
             data=pdf_buffer,
             file_name=f"{spread_name.replace(' ', '_').lower()}_tarot_spread.pdf",
             mime="application/pdf"
