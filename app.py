@@ -1,6 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 from logic import generate_tarot_spread_pdf
+from spreads import SPREADS
 
 # -------------------------------------------------
 # Page config
@@ -15,98 +16,85 @@ st.caption("Design a spread. Shape the question. Download the ritual.")
 st.divider()
 
 # -------------------------------------------------
+# Spread selection
+# -------------------------------------------------
+spread_choice = st.selectbox(
+    "Choose a spread",
+    list(SPREADS.keys())
+)
+
+spread_def = SPREADS[spread_choice]
+
+# -------------------------------------------------
 # Inputs
 # -------------------------------------------------
-spread_name = st.text_input("Spread name")
-theme = st.text_area("Theme / Intention")
-
-layout_type = st.selectbox(
-    "Spread layout",
-    [
-        "Line (Timeline)",
-        "Triangle (Tension)",
-        "Cross (Intersection)",
-        "Horseshoe (Journey)",
-        "Circle (Wholeness)"
-    ]
+spread_name = st.text_input(
+    "Spread name",
+    value=spread_choice if spread_choice != "Custom Spread" else ""
 )
 
-num_cards = st.number_input(
-    "Number of cards",
-    min_value=3,
-    max_value=10,
-    value=3,
-    step=1
+theme = st.text_area(
+    "Theme / Intention",
+    placeholder="What is this spread designed to explore?"
 )
 
-st.subheader("Card Positions")
-positions = []
-for i in range(int(num_cards)):
-    pos = st.text_input(
-        f"Position {i + 1}",
-        placeholder=f"Meaning of card {i + 1}"
+# -------------------------------------------------
+# Position logic
+# -------------------------------------------------
+if spread_choice == "Custom Spread":
+    num_cards = st.number_input(
+        "Number of cards",
+        min_value=3,
+        max_value=10,
+        value=3,
+        step=1
     )
-    positions.append(pos)
+
+    positions = []
+    for i in range(int(num_cards)):
+        pos = st.text_input(
+            f"Position {i + 1}",
+            placeholder=f"Meaning of card {i + 1}"
+        )
+        positions.append(pos)
+
+    layout_type = st.selectbox(
+        "Layout",
+        ["Line", "Triangle", "Cross", "Horseshoe", "Circle"]
+    )
+
+else:
+    positions = spread_def["positions"]
+    layout_type = spread_def["layout"]
 
 # -------------------------------------------------
 # Layout engine
 # -------------------------------------------------
 def get_layout_css(layout, count):
-    if layout.startswith("Line"):
-        cols = count
-        return {
-            "grid": f"repeat({cols}, 1fr)",
-            "areas": " ".join([f"c{i}" for i in range(count)])
-        }
+    if layout == "Line":
+        return ("repeat(" + str(count) + ", 1fr)", " ".join([f"c{i}" for i in range(count)]))
 
-    if layout.startswith("Triangle"):
-        return {
-            "grid": "repeat(3, 1fr)",
-            "areas": """
-            . c0 .
-            c1 . c2
-            """
-        }
+    if layout == "Triangle":
+        return ("repeat(3, 1fr)", ". c0 . c1 . c2")
 
-    if layout.startswith("Cross"):
-        return {
-            "grid": "repeat(3, 1fr)",
-            "areas": """
-            . c0 .
-            c1 c2 c3
-            . c4 .
-            """
-        }
+    if layout == "Cross":
+        return ("repeat(3, 1fr)", ". c0 . c1 c2 c3 . c4 .")
 
-    if layout.startswith("Horseshoe"):
-        return {
-            "grid": "repeat(5, 1fr)",
-            "areas": """
-            c0 . . . c1
-            . c2 . c3 .
-            . . c4 . .
-            """
-        }
+    if layout == "Horseshoe":
+        return ("repeat(5, 1fr)", "c0 . . . c1 . c2 . c3 . . c4 . .")
 
-    if layout.startswith("Circle"):
-        return {
-            "grid": "repeat(3, 1fr)",
-            "areas": """
-            c0 . c1
-            . c2 .
-            c3 . c4
-            """
-        }
+    if layout == "Circle":
+        return ("repeat(3, 1fr)", "c0 . c1 . c2 . c3 . c4")
 
-    return None
+    return ("repeat(3, 1fr)", "")
 
 # -------------------------------------------------
 # Visual Preview
 # -------------------------------------------------
-if any(p.strip() for p in positions):
+if positions and any(p.strip() for p in positions):
     st.subheader("Spread Preview")
 
-    layout = get_layout_css(layout_type, len(positions))
+    cols, areas = get_layout_css(layout_type, len(positions))
 
     cards_html = f"""
     <html>
@@ -120,9 +108,8 @@ if any(p.strip() for p in positions):
 
             .grid {{
                 display: grid;
-                grid-template-columns: {layout['grid']};
-                grid-template-areas:
-                    {layout['areas']};
+                grid-template-columns: {cols};
+                grid-template-areas: "{areas}";
                 gap: 1.6rem;
                 justify-items: center;
                 padding: 2rem;
@@ -168,7 +155,7 @@ if any(p.strip() for p in positions):
     </html>
     """
 
-    components.html(cards_html, height=420, scrolling=False)
+    components.html(cards_html, height=440, scrolling=False)
 
 st.divider()
 
