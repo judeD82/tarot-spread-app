@@ -10,37 +10,36 @@ st.set_page_config(
     layout="centered"
 )
 
-# -------------------------------------------------
-# Global UI framing (Streamlit side)
-# -------------------------------------------------
 st.title("Tarot Spread Builder")
-st.caption("Design a spread. Contemplate it. Download the ritual.")
-
+st.caption("Design a spread. Shape the question. Download the ritual.")
 st.divider()
 
 # -------------------------------------------------
 # Inputs
 # -------------------------------------------------
-spread_name = st.text_input(
-    "Spread name",
-    placeholder="e.g. The Velvet Threshold"
-)
+spread_name = st.text_input("Spread name")
+theme = st.text_area("Theme / Intention")
 
-theme = st.text_area(
-    "Theme / Intention",
-    placeholder="What is this spread designed to explore?"
+layout_type = st.selectbox(
+    "Spread layout",
+    [
+        "Line (Timeline)",
+        "Triangle (Tension)",
+        "Cross (Intersection)",
+        "Horseshoe (Journey)",
+        "Circle (Wholeness)"
+    ]
 )
 
 num_cards = st.number_input(
     "Number of cards",
-    min_value=1,
-    max_value=12,
+    min_value=3,
+    max_value=10,
     value=3,
     step=1
 )
 
 st.subheader("Card Positions")
-
 positions = []
 for i in range(int(num_cards)):
     pos = st.text_input(
@@ -50,33 +49,88 @@ for i in range(int(num_cards)):
     positions.append(pos)
 
 # -------------------------------------------------
-# Visual Preview (CSS INCLUDED INSIDE IFRAME)
+# Layout engine
+# -------------------------------------------------
+def get_layout_css(layout, count):
+    if layout.startswith("Line"):
+        cols = count
+        return {
+            "grid": f"repeat({cols}, 1fr)",
+            "areas": " ".join([f"c{i}" for i in range(count)])
+        }
+
+    if layout.startswith("Triangle"):
+        return {
+            "grid": "repeat(3, 1fr)",
+            "areas": """
+            . c0 .
+            c1 . c2
+            """
+        }
+
+    if layout.startswith("Cross"):
+        return {
+            "grid": "repeat(3, 1fr)",
+            "areas": """
+            . c0 .
+            c1 c2 c3
+            . c4 .
+            """
+        }
+
+    if layout.startswith("Horseshoe"):
+        return {
+            "grid": "repeat(5, 1fr)",
+            "areas": """
+            c0 . . . c1
+            . c2 . c3 .
+            . . c4 . .
+            """
+        }
+
+    if layout.startswith("Circle"):
+        return {
+            "grid": "repeat(3, 1fr)",
+            "areas": """
+            c0 . c1
+            . c2 .
+            c3 . c4
+            """
+        }
+
+    return None
+
+# -------------------------------------------------
+# Visual Preview
 # -------------------------------------------------
 if any(p.strip() for p in positions):
     st.subheader("Spread Preview")
 
-    cards_html = """
+    layout = get_layout_css(layout_type, len(positions))
+
+    cards_html = f"""
     <html>
     <head>
         <style>
-            body {
+            body {{
                 margin: 0;
-                padding: 0;
                 background: transparent;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            }
+            }}
 
-            .tarot-grid {
-                display: flex;
+            .grid {{
+                display: grid;
+                grid-template-columns: {layout['grid']};
+                grid-template-areas:
+                    {layout['areas']};
                 gap: 1.6rem;
-                flex-wrap: wrap;
-                justify-content: center;
-                padding: 1.5rem 0;
-            }
+                justify-items: center;
+                padding: 2rem;
+            }}
 
-            .tarot-card {
+            .tarot-card {{
                 width: 120px;
-                height: 204px; /* Tarot ratio */
+                height: 204px;
                 background:
                     radial-gradient(120% 120% at 30% 20%, rgba(255,255,255,0.06), transparent 40%),
                     linear-gradient(180deg, #14141b, #0b0b10);
@@ -93,23 +147,18 @@ if any(p.strip() for p in positions):
                 color: #e9e9ea;
                 font-size: 0.85rem;
                 line-height: 1.25rem;
-                letter-spacing: 0.02em;
-            }
-
-            .tarot-card span {
-                opacity: 0.88;
-            }
+            }}
         </style>
     </head>
     <body>
-        <div class="tarot-grid">
+        <div class="grid">
     """
 
-    for pos in positions:
-        label = pos.strip() if pos.strip() else "—"
+    for i, pos in enumerate(positions):
+        label = pos if pos.strip() else "—"
         cards_html += f"""
-            <div class="tarot-card">
-                <span>{label}</span>
+            <div class="tarot-card" style="grid-area: c{i};">
+                {label}
             </div>
         """
 
@@ -119,11 +168,7 @@ if any(p.strip() for p in positions):
     </html>
     """
 
-    components.html(
-        cards_html,
-        height=260,
-        scrolling=False
-    )
+    components.html(cards_html, height=420, scrolling=False)
 
 st.divider()
 
@@ -136,7 +181,7 @@ if st.button("Create PDF"):
     elif any(p.strip() == "" for p in positions):
         st.warning("Please fill in all card positions.")
     else:
-        pdf_buffer = generate_tarot_spread_pdf(
+        pdf = generate_tarot_spread_pdf(
             spread_name=spread_name,
             theme=theme,
             positions=positions
@@ -145,8 +190,8 @@ if st.button("Create PDF"):
         st.success("Your tarot spread PDF is ready.")
 
         st.download_button(
-            label="Download PDF",
-            data=pdf_buffer,
-            file_name=f"{spread_name.replace(' ', '_').lower()}_tarot_spread.pdf",
+            "Download PDF",
+            pdf,
+            f"{spread_name.replace(' ', '_').lower()}_tarot_spread.pdf",
             mime="application/pdf"
         )
